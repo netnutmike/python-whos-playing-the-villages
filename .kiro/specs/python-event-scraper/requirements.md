@@ -76,6 +76,27 @@ This document specifies the requirements for converting a bash shell script that
 7. THE Event Scraper SHALL output the formatted data to standard output
 8. IF no events are found, THEN THE Event Scraper SHALL output format-appropriate empty data (single "#" for legacy, empty array for JSON, headers only for CSV, empty string for plain text)
 
+### Requirement 9
+
+**User Story:** As a user, I want to configure which fields from the API response are included in the output, so that I can customize the information displayed based on my needs.
+
+#### Acceptance Criteria
+
+1. THE Event Scraper SHALL support configurable output fields that can be specified in the configuration file
+2. THE Event Scraper SHALL support configurable output fields that can be specified via command-line argument
+3. WHEN no output fields are specified, THE Event Scraper SHALL default to outputting "location.title" and "title" fields (maintaining backward compatibility)
+4. THE Event Scraper SHALL support the following field paths from the API response: title, description, excerpt, category, subcategories, start.date, end.date, allDay, cancelled, featured, location.title, location.category, address.streetAddress, address.locality, address.region, address.postalCode, address.country, image, url, otherInfo, id
+5. WHEN a user specifies nested fields, THE Event Scraper SHALL use dot notation (e.g., "location.title", "start.date", "address.locality")
+6. WHEN a specified field is missing from an event, THE Event Scraper SHALL output an empty string or null value for that field
+7. WHEN outputting in JSON format, THE Event Scraper SHALL include all specified fields as separate properties in each event object
+8. WHEN outputting in CSV format, THE Event Scraper SHALL include all specified fields as separate columns with appropriate headers
+9. WHEN outputting in plain text format, THE Event Scraper SHALL display all specified fields in a readable format
+10. WHEN outputting in meshtastic format, THE Event Scraper SHALL use the first two specified fields for the comma-separated pairs (maintaining backward compatibility with venue,title format)
+11. THE Event Scraper SHALL apply venue abbreviation only to the "location.title" field when it is included in the output
+12. THE configuration file SHALL include an "output_fields" setting that accepts a list of field names
+13. THE command-line interface SHALL include a "--fields" argument that accepts a comma-separated list of field names
+14. WHEN both configuration file and command-line fields are specified, THE command-line argument SHALL take precedence
+
 ### Requirement 6
 
 **User Story:** As a developer, I want comprehensive documentation for the Python application, so that I can understand how to install, configure, and use the system.

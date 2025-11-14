@@ -101,6 +101,50 @@ class TestConfigLoader(unittest.TestCase):
         finally:
             os.unlink(temp_file)
 
+    def test_get_output_fields_from_config(self):
+        """Test getting output_fields from config."""
+        config = {'output_fields': ['title', 'location.title', 'start.date']}
+        fallback = ['location.title', 'title']
+        fields = ConfigLoader.get_output_fields(config, fallback)
+        self.assertEqual(fields, ['title', 'location.title', 'start.date'])
+
+    def test_get_output_fields_fallback(self):
+        """Test getting output_fields fallback when not in config."""
+        config = {'format': 'json'}
+        fallback = ['location.title', 'title']
+        fields = ConfigLoader.get_output_fields(config, fallback)
+        self.assertEqual(fields, fallback)
+
+    def test_get_output_fields_invalid_type(self):
+        """Test getting output_fields when config has invalid type."""
+        config = {'output_fields': 'not-a-list'}
+        fallback = ['location.title', 'title']
+        fields = ConfigLoader.get_output_fields(config, fallback)
+        self.assertEqual(fields, fallback)
+
+    def test_get_output_fields_non_string_items(self):
+        """Test getting output_fields when list contains non-strings."""
+        config = {'output_fields': ['title', 123, 'location.title']}
+        fallback = ['location.title', 'title']
+        fields = ConfigLoader.get_output_fields(config, fallback)
+        self.assertEqual(fields, fallback)
+
+    def test_load_config_with_output_fields(self):
+        """Test loading config with output_fields setting."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write('output_fields:\n')
+            f.write('  - location.title\n')
+            f.write('  - title\n')
+            f.write('  - start.date\n')
+            temp_file = f.name
+        
+        try:
+            config = ConfigLoader.load_config(temp_file)
+            self.assertIn('output_fields', config)
+            self.assertEqual(config['output_fields'], ['location.title', 'title', 'start.date'])
+        finally:
+            os.unlink(temp_file)
+
 
 if __name__ == '__main__':
     unittest.main()

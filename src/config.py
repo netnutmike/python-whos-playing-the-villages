@@ -1,7 +1,8 @@
 """Configuration module for Villages Event Scraper.
 
 This module contains all configuration constants including URLs,
-venue mappings, HTTP settings, and valid output formats.
+venue mappings, HTTP settings, valid output formats, and configurable
+output fields for customizing which data fields are included in the output.
 """
 
 
@@ -71,6 +72,37 @@ class Config:
     # Output formats
     VALID_FORMATS = ["meshtastic", "json", "csv", "plain"]
     DEFAULT_FORMAT = "meshtastic"
+    
+    # Output fields configuration
+    # Default fields maintain backward compatibility with original implementation
+    DEFAULT_OUTPUT_FIELDS = ["location.title", "title"]
+    
+    # Available fields from API response that can be included in output
+    # These field paths use dot notation for nested fields (e.g., "location.title", "start.date")
+    AVAILABLE_FIELDS = [
+        "title",
+        "description",
+        "excerpt",
+        "category",
+        "subcategories",
+        "start.date",
+        "end.date",
+        "allDay",
+        "cancelled",
+        "featured",
+        "location.title",
+        "location.category",
+        "location.id",
+        "address.streetAddress",
+        "address.locality",
+        "address.region",
+        "address.postalCode",
+        "address.country",
+        "image",
+        "url",
+        "otherInfo",
+        "id"
+    ]
     
     @staticmethod
     def get_calendar_url(

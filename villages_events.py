@@ -78,6 +78,11 @@ def main() -> int:
         action='store_true',
         help='Output raw API response without processing (for debugging)'
     )
+    parser.add_argument(
+        '--fields',
+        type=str,
+        help='Comma-separated list of field names to include in output (e.g., "location.title,title,start.date")'
+    )
     
     try:
         args = parser.parse_args()
@@ -94,6 +99,37 @@ def main() -> int:
         
         # Get timeout from config file or use default
         timeout = ConfigLoader.get_default(yaml_config, 'timeout', Config.DEFAULT_TIMEOUT)
+        
+        # Determine output fields with precedence: CLI > config file > defaults
+        output_fields = Config.DEFAULT_OUTPUT_FIELDS
+        
+        # Load from config file if present
+        config_fields = ConfigLoader.get_output_fields(yaml_config, Config.DEFAULT_OUTPUT_FIELDS)
+        if config_fields != Config.DEFAULT_OUTPUT_FIELDS:
+            output_fields = config_fields
+        
+        # Override with command-line argument if provided
+        if args.fields:
+            # Parse comma-separated field names
+            cli_fields = [field.strip() for field in args.fields.split(',') if field.strip()]
+            
+            # Validate field names against AVAILABLE_FIELDS
+            invalid_fields = [f for f in cli_fields if f not in Config.AVAILABLE_FIELDS]
+            if invalid_fields:
+                logging.warning(
+                    f"Invalid field names will be ignored: {', '.join(invalid_fields)}. "
+                    f"Valid fields are: {', '.join(Config.AVAILABLE_FIELDS)}"
+                )
+            
+            # Filter to only valid fields
+            valid_fields = [f for f in cli_fields if f in Config.AVAILABLE_FIELDS]
+            
+            if valid_fields:
+                output_fields = valid_fields
+            else:
+                logging.warning(
+                    f"No valid fields specified, using defaults: {', '.join(Config.DEFAULT_OUTPUT_FIELDS)}"
+                )
         
         # Generate URLs with specified filters
         calendar_url = Config.get_calendar_url(args.date_range, args.category, args.location)
@@ -129,14 +165,15 @@ def main() -> int:
             
             # Step 4: Process events
             logging.debug("Processing events...")
-            processor = EventProcessor(venue_mappings)
+            processor = EventProcessor(venue_mappings, output_fields=output_fields)
             processed_events = processor.process_events(api_response)
             
             # Step 5: Format output
             logging.debug(f"Formatting output as {args.format}...")
             formatted_output = OutputFormatter.format_events(
                 processed_events,
-                format_type=args.format
+                format_type=args.format,
+                field_names=output_fields
             )
             
             # Step 6: Print formatted output to stdout

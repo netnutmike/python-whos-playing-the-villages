@@ -96,3 +96,66 @@
   - Test error handling paths (network failures, invalid JSON, missing fields)
   - Verify output matches expected format for each output type
   - _Requirements: 8.1, 8.2, 8.3_
+
+- [x] 12. Add configurable output fields support to Config module
+  - Add DEFAULT_OUTPUT_FIELDS constant with ["location.title", "title"] for backward compatibility
+  - Add AVAILABLE_FIELDS constant listing all supported field paths from API response
+  - Update Config class documentation to include field configuration
+  - _Requirements: 9.3, 9.4_
+
+- [x] 13. Update EventProcessor to support configurable fields
+  - Modify __init__() to accept output_fields parameter with default to DEFAULT_OUTPUT_FIELDS
+  - Implement extract_field() method to extract values using dot notation (e.g., "location.title", "start.date")
+  - Update process_events() to return list of dictionaries instead of tuples
+  - Extract all specified fields for each event using extract_field()
+  - Apply venue abbreviation only to "location.title" field when present
+  - Handle missing nested fields gracefully (return empty string)
+  - _Requirements: 9.5, 9.6, 9.11_
+
+- [x] 14. Update OutputFormatter to support configurable fields
+  - Modify format_meshtastic() to accept field_names parameter and use first two fields
+  - Modify format_json() to output all fields from event dictionaries
+  - Modify format_csv() to accept field_names parameter and create headers from field names
+  - Modify format_plain() to accept field_names parameter and display all fields
+  - Update format_events() to accept field_names parameter and pass to formatters
+  - Handle empty or missing field values in all formats
+  - _Requirements: 9.7, 9.8, 9.9, 9.10_
+
+- [x] 15. Add output_fields configuration to config.yaml
+  - Add output_fields setting to config.yaml.example with default ["location.title", "title"]
+  - Add comments explaining available field paths and dot notation
+  - Add example configurations showing different field combinations
+  - Update ConfigLoader to load output_fields from YAML
+  - _Requirements: 9.12_
+
+- [x] 16. Add --fields command-line argument
+  - Add --fields argument to argparse that accepts comma-separated field names
+  - Parse comma-separated string into list of field names
+  - Implement precedence: command-line overrides config file, config file overrides defaults
+  - Validate field names against AVAILABLE_FIELDS and warn about invalid fields
+  - _Requirements: 9.13, 9.14_
+
+- [x] 17. Update main entry point to use configurable fields
+  - Load output_fields from config file using ConfigLoader
+  - Override with --fields argument if provided
+  - Pass output_fields to EventProcessor initialization
+  - Pass field_names to OutputFormatter.format_events()
+  - Update error handling for invalid field specifications
+  - _Requirements: 9.2, 9.14_
+
+- [x] 18. Update documentation for configurable fields
+  - Update README.md with examples of using --fields argument
+  - Document all available field paths in AVAILABLE_FIELDS
+  - Add examples showing different field combinations for various use cases
+  - Document the output_fields configuration setting
+  - Add examples of output in different formats with custom fields
+  - _Requirements: 9.4, 9.12, 9.13_
+
+- [x] 19. Write tests for configurable fields feature
+  - Write unit tests for extract_field() method with various dot notation paths
+  - Write unit tests for EventProcessor with custom output_fields
+  - Write unit tests for OutputFormatter with custom field_names
+  - Write integration tests with various field combinations
+  - Test backward compatibility with default fields
+  - Test handling of missing/invalid fields
+  - _Requirements: 9.5, 9.6, 9.7, 9.8, 9.9, 9.10_

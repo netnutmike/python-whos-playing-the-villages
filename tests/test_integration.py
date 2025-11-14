@@ -117,7 +117,7 @@ class TestIntegrationEndToEnd(unittest.TestCase):
         # Verify JSON output
         parsed = json.loads(output)
         self.assertEqual(len(parsed), 3)
-        self.assertEqual(parsed[0]["venue"], "Brownwood")
+        self.assertEqual(parsed[0]["location.title"], "Brownwood")
         self.assertEqual(parsed[0]["title"], "Jazz Band")
 
     @patch('src.api_client.requests.Session.get')
@@ -158,7 +158,7 @@ class TestIntegrationEndToEnd(unittest.TestCase):
         
         # Verify CSV output
         lines = [line.strip() for line in output.strip().split('\n')]
-        self.assertEqual(lines[0], "venue,title")
+        self.assertEqual(lines[0], "location.title,title")
         self.assertIn("Brownwood,Jazz Band", lines[1])
 
     @patch('src.api_client.requests.Session.get')
@@ -198,8 +198,8 @@ class TestIntegrationEndToEnd(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         
         # Verify plain output
-        self.assertIn("Brownwood: Jazz Band", output)
-        self.assertIn("Spanish Springs: Rock Group", output)
+        self.assertIn("location.title: Brownwood, title: Jazz Band", output)
+        self.assertIn("location.title: Spanish Springs, title: Rock Group", output)
 
     @patch('src.api_client.requests.Session.get')
     @patch('src.session_manager.requests.Session.get')
@@ -575,7 +575,7 @@ class TestIntegrationDateRange(unittest.TestCase):
         # Verify JSON output
         parsed = json.loads(output)
         self.assertEqual(len(parsed), 1)
-        self.assertEqual(parsed[0]["venue"], "Brownwood")
+        self.assertEqual(parsed[0]["location.title"], "Brownwood")
         
         # Verify API was called with correct date range
         api_call_args = mock_api_get.call_args
@@ -733,7 +733,7 @@ class TestIntegrationCategory(unittest.TestCase):
         # Verify JSON output
         parsed = json.loads(output)
         self.assertEqual(len(parsed), 1)
-        self.assertEqual(parsed[0]["venue"], "Brownwood")
+        self.assertEqual(parsed[0]["location.title"], "Brownwood")
         
         # Verify API was called with correct parameters
         api_call_args = mock_api_get.call_args
@@ -892,7 +892,7 @@ class TestIntegrationLocation(unittest.TestCase):
         # Verify JSON output
         parsed = json.loads(output)
         self.assertEqual(len(parsed), 1)
-        self.assertEqual(parsed[0]["venue"], "Brownwood")
+        self.assertEqual(parsed[0]["location.title"], "Brownwood")
         
         # Verify API was called with correct parameters
         api_call_args = mock_api_get.call_args
@@ -1017,3 +1017,516 @@ class TestIntegrationRawOutput(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestIntegrationConfigurableFields(unittest.TestCase):
+    """Integration tests for configurable output fields feature."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_js_content = 'dp_AUTH_TOKEN = "Basic dGVzdHRva2VuMTIzNDU2";'
+        self.mock_api_response = {
+            "events": [
+                {
+                    "location": {"title": "Brownwood Paddock Square", "category": "town-square"},
+                    "title": "Jazz Band",
+                    "description": "Live jazz performance",
+                    "category": "entertainment",
+                    "start": {"date": "2025-11-14T22:00:00.000Z"},
+                    "end": {"date": "2025-11-14T23:30:00.000Z"},
+                    "address": {
+                        "streetAddress": "123 Main St",
+                        "locality": "The Villages",
+                        "region": "FL",
+                        "postalCode": "32162"
+                    },
+                    "url": "https://example.com/event1"
+                },
+                {
+                    "location": {"title": "Spanish Springs Town Square", "category": "town-square"},
+                    "title": "Rock Group",
+                    "description": "Rock concert",
+                    "category": "entertainment",
+                    "start": {"date": "2025-11-15T20:00:00.000Z"},
+                    "end": {"date": "2025-11-15T22:00:00.000Z"},
+                    "address": {
+                        "streetAddress": "456 Oak Ave",
+                        "locality": "The Villages",
+                        "region": "FL",
+                        "postalCode": "32163"
+                    },
+                    "url": "https://example.com/event2"
+                }
+            ]
+        }
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--fields', 'location.title,title,start.date'])
+    def test_custom_fields_meshtastic_format(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test custom fields with Meshtastic format (uses first two fields)."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify output uses first two fields (location.title and title)
+        self.assertIn("Brownwood,Jazz Band", output)
+        self.assertIn("Spanish Springs,Rock Group", output)
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--fields', 'title,start.date,location.title', '--format', 'json'])
+    def test_custom_fields_json_format(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test custom fields with JSON format (includes all specified fields)."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify JSON output contains all three fields
+        parsed = json.loads(output)
+        self.assertEqual(len(parsed), 2)
+        
+        # Check first event
+        self.assertIn("title", parsed[0])
+        self.assertIn("start.date", parsed[0])
+        self.assertIn("location.title", parsed[0])
+        self.assertEqual(parsed[0]["title"], "Jazz Band")
+        self.assertEqual(parsed[0]["start.date"], "2025-11-14T22:00:00.000Z")
+        self.assertEqual(parsed[0]["location.title"], "Brownwood")
+        
+        # Check second event
+        self.assertEqual(parsed[1]["title"], "Rock Group")
+        self.assertEqual(parsed[1]["start.date"], "2025-11-15T20:00:00.000Z")
+        self.assertEqual(parsed[1]["location.title"], "Spanish Springs")
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--fields', 'location.title,title,description,url', '--format', 'csv'])
+    def test_custom_fields_csv_format(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test custom fields with CSV format."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify CSV output
+        lines = [line.strip() for line in output.strip().split('\n')]
+        
+        # Check header
+        self.assertEqual(lines[0], "location.title,title,description,url")
+        
+        # Check data rows
+        self.assertIn("Brownwood,Jazz Band,Live jazz performance,https://example.com/event1", lines[1])
+        self.assertIn("Spanish Springs,Rock Group,Rock concert,https://example.com/event2", lines[2])
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--fields', 'title,location.title,start.date', '--format', 'plain'])
+    def test_custom_fields_plain_format(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test custom fields with plain text format."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify plain text output
+        self.assertIn("title: Jazz Band, location.title: Brownwood, start.date: 2025-11-14T22:00:00.000Z", output)
+        self.assertIn("title: Rock Group, location.title: Spanish Springs, start.date: 2025-11-15T20:00:00.000Z", output)
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--fields', 'location.title,title,address.streetAddress,address.locality', '--format', 'json'])
+    def test_nested_fields_extraction(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test extraction of nested fields using dot notation."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify nested fields are extracted correctly
+        parsed = json.loads(output)
+        self.assertEqual(len(parsed), 2)
+        
+        # Check first event
+        self.assertEqual(parsed[0]["address.streetAddress"], "123 Main St")
+        self.assertEqual(parsed[0]["address.locality"], "The Villages")
+        
+        # Check second event
+        self.assertEqual(parsed[1]["address.streetAddress"], "456 Oak Ave")
+        self.assertEqual(parsed[1]["address.locality"], "The Villages")
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py'])
+    def test_backward_compatibility_default_fields(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test backward compatibility with default fields when no --fields specified."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify default format (meshtastic) with default fields (location.title, title)
+        expected = "Brownwood,Jazz Band#Spanish Springs,Rock Group#"
+        self.assertEqual(output, expected)
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--fields', 'title,nonexistent.field,location.title', '--format', 'json'])
+    def test_invalid_fields_handling(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test handling of invalid field names (should warn and filter them out)."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code is still 0 (graceful handling)
+        self.assertEqual(exit_code, 0)
+        
+        # Verify output only contains valid fields (invalid fields are filtered out)
+        parsed = json.loads(output)
+        self.assertEqual(len(parsed), 2)
+        self.assertIn("title", parsed[0])
+        self.assertIn("location.title", parsed[0])
+        # nonexistent.field should not be in output
+        self.assertNotIn("nonexistent.field", parsed[0])
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--fields', 'title,description', '--format', 'json'])
+    def test_missing_fields_in_events(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test handling of events where some specified fields are missing."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API response with some events missing description field
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = {
+            "events": [
+                {
+                    "title": "Event with description",
+                    "description": "This event has a description"
+                },
+                {
+                    "title": "Event without description"
+                    # description field is missing
+                }
+            ]
+        }
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify both events are in output
+        parsed = json.loads(output)
+        self.assertEqual(len(parsed), 2)
+        
+        # First event should have description
+        self.assertEqual(parsed[0]["title"], "Event with description")
+        self.assertEqual(parsed[0]["description"], "This event has a description")
+        
+        # Second event should have empty string for missing description
+        self.assertEqual(parsed[1]["title"], "Event without description")
+        self.assertEqual(parsed[1]["description"], "")
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--fields', 'title,location.title,category', '--format', 'json'])
+    def test_venue_abbreviation_only_on_location_title(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test that venue abbreviation is only applied to location.title field."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API response with "Brownwood" in multiple fields
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = {
+            "events": [
+                {
+                    "location": {"title": "Brownwood Paddock Square"},
+                    "title": "Brownwood Artist",
+                    "category": "Brownwood entertainment"
+                }
+            ]
+        }
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify venue abbreviation only applied to location.title
+        parsed = json.loads(output)
+        self.assertEqual(len(parsed), 1)
+        
+        # location.title should be abbreviated
+        self.assertEqual(parsed[0]["location.title"], "Brownwood")
+        
+        # title and category should NOT be abbreviated
+        self.assertEqual(parsed[0]["title"], "Brownwood Artist")
+        self.assertEqual(parsed[0]["category"], "Brownwood entertainment")
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--fields', 'title,start.date,end.date,category', '--format', 'csv'])
+    def test_multiple_nested_fields(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test extraction of multiple nested fields from different objects."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify CSV output with multiple nested fields
+        lines = [line.strip() for line in output.strip().split('\n')]
+        
+        # Check header
+        self.assertEqual(lines[0], "title,start.date,end.date,category")
+        
+        # Check data rows contain nested field values
+        self.assertIn("Jazz Band,2025-11-14T22:00:00.000Z,2025-11-14T23:30:00.000Z,entertainment", lines[1])
+        self.assertIn("Rock Group,2025-11-15T20:00:00.000Z,2025-11-15T22:00:00.000Z,entertainment", lines[2])

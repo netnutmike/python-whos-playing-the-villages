@@ -1,8 +1,9 @@
 """Event processor module for extracting and processing event data."""
 
 import logging
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
 
+from .config import Config
 from .exceptions import ProcessingError
 
 
@@ -12,14 +13,17 @@ logger = logging.getLogger(__name__)
 class EventProcessor:
     """Processes event data and applies venue abbreviations."""
 
-    def __init__(self, venue_mappings: Dict[str, str]):
+    def __init__(self, venue_mappings: Dict[str, str], output_fields: Optional[List[str]] = None):
         """
-        Initialize with venue abbreviation mappings.
+        Initialize with venue abbreviation mappings and output fields.
 
         Args:
             venue_mappings: Dictionary mapping keywords to abbreviations
+            output_fields: List of field paths to extract (e.g., ["title", "location.title", "start.date"])
+                          Defaults to DEFAULT_OUTPUT_FIELDS for backward compatibility
         """
         self.venue_mappings = venue_mappings
+        self.output_fields = output_fields if output_fields is not None else Config.DEFAULT_OUTPUT_FIELDS
 
     def abbreviate_venue(self, venue: str) -> str:
         """
@@ -42,7 +46,35 @@ class EventProcessor:
         # Return original venue if no match found
         return venue
 
-    def process_events(self, api_response: Dict[str, Any]) -> List[Tuple[str, str]]:
+    def extract_field(self, event: Dict[str, Any], field_path: str) -> Any:
+        """
+        Extracts a field value from an event using dot notation.
+
+        Args:
+            event: Event dictionary from API response
+            field_path: Dot-separated path to field (e.g., "location.title", "start.date")
+
+        Returns:
+            Field value or empty string if not found
+        """
+        # Split the field path by dots to handle nested fields
+        parts = field_path.split('.')
+        current = event
+
+        # Navigate through nested dictionaries
+        for part in parts:
+            if not isinstance(current, dict):
+                return ""
+            
+            if part not in current:
+                return ""
+            
+            current = current[part]
+
+        # Return the value, or empty string if None
+        return current if current is not None else ""
+
+    def process_events(self, api_response: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Extracts and processes events from API response.
 
@@ -50,7 +82,7 @@ class EventProcessor:
             api_response: Parsed JSON response from API
 
         Returns:
-            List of tuples (abbreviated_venue, event_title)
+            List of dictionaries with extracted fields
 
         Raises:
             ProcessingError: If events array is missing from response
@@ -67,34 +99,22 @@ class EventProcessor:
 
         for idx, event in enumerate(events):
             try:
-                # Extract location.title field
-                if "location" not in event:
-                    logger.warning(f"Event at index {idx} missing 'location' field, skipping")
-                    continue
-
-                location = event["location"]
-                if not isinstance(location, dict):
-                    logger.warning(f"Event at index {idx} has invalid 'location' field, skipping")
-                    continue
-
-                if "title" not in location:
-                    logger.warning(f"Event at index {idx} missing 'location.title' field, skipping")
-                    continue
-
-                venue = location["title"]
-
-                # Extract event title field
-                if "title" not in event:
-                    logger.warning(f"Event at index {idx} missing 'title' field, skipping")
-                    continue
-
-                event_title = event["title"]
-
-                # Apply venue abbreviation
-                abbreviated_venue = self.abbreviate_venue(venue)
+                # Extract all specified fields for this event
+                event_data = {}
+                
+                for field_path in self.output_fields:
+                    # Extract the field value using dot notation
+                    value = self.extract_field(event, field_path)
+                    
+                    # Apply venue abbreviation only to "location.title" field
+                    if field_path == "location.title" and value:
+                        value = self.abbreviate_venue(value)
+                    
+                    # Store the extracted value
+                    event_data[field_path] = value
 
                 # Add to processed events list
-                processed_events.append((abbreviated_venue, event_title))
+                processed_events.append(event_data)
 
             except Exception as e:
                 logger.warning(f"Error processing event at index {idx}: {e}, skipping")

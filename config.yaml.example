@@ -24,6 +24,38 @@ category: entertainment
 #          Savannah+Recreation, sports, executive-golf, Polo+Club, all
 location: town-squares
 
+# Output fields to include in formatted output
+# Specify which fields from the API response to include
+# Use dot notation for nested fields (e.g., location.title, start.date)
+# Default: ["location.title", "title"] for backward compatibility
+# 
+# Available fields:
+#   - title: Event title
+#   - description: Full event description
+#   - excerpt: Short event description
+#   - category: Event category
+#   - subcategories: List of subcategories
+#   - start.date: Event start date/time
+#   - end.date: Event end date/time
+#   - allDay: Whether event is all day
+#   - cancelled: Whether event is cancelled
+#   - featured: Whether event is featured
+#   - location.title: Venue name (abbreviated based on venue_mappings)
+#   - location.category: Venue category
+#   - location.id: Venue ID
+#   - address.streetAddress: Street address
+#   - address.locality: City/locality
+#   - address.region: State/region
+#   - address.postalCode: Postal code
+#   - address.country: Country
+#   - image: Event image URL
+#   - url: Event URL
+#   - otherInfo: Additional information
+#   - id: Event ID
+output_fields:
+  - location.title
+  - title
+
 # Venue abbreviation mappings
 # Customize how venue names are abbreviated in the output
 venue_mappings:
@@ -35,13 +67,45 @@ venue_mappings:
 # HTTP timeout in seconds
 timeout: 10
 
-# Example: Custom configuration for sports events at Brownwood
-# Uncomment and modify to use:
-#
+# Example configurations:
+
+# Example 1: Detailed event information with times and location
+# format: json
+# output_fields:
+#   - title
+#   - location.title
+#   - start.date
+#   - end.date
+#   - description
+#   - address.locality
+
+# Example 2: Simple event listing with category
+# format: csv
+# output_fields:
+#   - location.title
+#   - title
+#   - category
+#   - start.date
+
+# Example 3: Event details with image and URL
+# format: plain
+# output_fields:
+#   - title
+#   - location.title
+#   - excerpt
+#   - image
+#   - url
+
+# Example 4: Custom configuration for sports events at Brownwood
 # format: json
 # date_range: this-week
 # category: sports
 # location: Brownwood+Paddock+Square
+# output_fields:
+#   - title
+#   - location.title
+#   - start.date
+#   - category
 # venue_mappings:
 #   Brownwood: BW
 #   Sawgrass: SG

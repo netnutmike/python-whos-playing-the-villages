@@ -157,6 +157,171 @@ Spanish Springs: Jane Smith
 Sawgrass: The Band
 ```
 
+### Configurable Output Fields
+
+The application allows you to customize which fields from the API response are included in the output. This gives you control over the information displayed, from basic venue and title to detailed event information including dates, descriptions, addresses, and more.
+
+#### Using the --fields Option
+
+Specify custom fields using the `--fields` command-line argument with a comma-separated list:
+
+```bash
+python villages_events.py --fields location.title,title,start.date
+```
+
+#### Available Fields
+
+The following fields can be included in your output using dot notation for nested fields:
+
+| Field Path | Description | Example Value |
+|------------|-------------|---------------|
+| `title` | Event title | "John Doe Band" |
+| `description` | Full event description | "Join us for an evening of..." |
+| `excerpt` | Short event description | "Live music performance" |
+| `category` | Event category | "entertainment" |
+| `subcategories` | List of subcategories | ["live-music", "outdoor"] |
+| `start.date` | Event start date/time | "2025-11-14T22:00:00.000Z" |
+| `end.date` | Event end date/time | "2025-11-15T01:00:00.000Z" |
+| `allDay` | Whether event is all day | false |
+| `cancelled` | Whether event is cancelled | false |
+| `featured` | Whether event is featured | true |
+| `location.title` | Venue name (abbreviated) | "Brownwood Paddock Square" |
+| `location.category` | Venue category | "town-squares" |
+| `location.id` | Venue ID | "brownwood-paddock-square" |
+| `address.streetAddress` | Street address | "1101 Canal Street" |
+| `address.locality` | City/locality | "The Villages" |
+| `address.region` | State/region | "FL" |
+| `address.postalCode` | Postal code | "32162" |
+| `address.country` | Country | "US" |
+| `image` | Event image URL | "https://..." |
+| `url` | Event URL | "https://..." |
+| `otherInfo` | Additional information | "Free admission" |
+| `id` | Event ID | "event-12345" |
+
+**Note:** The `location.title` field is the only field that applies venue abbreviation rules based on your `venue_mappings` configuration.
+
+#### Field Configuration Examples
+
+**Example 1: Basic event listing with start time**
+```bash
+python villages_events.py --fields location.title,title,start.date --format json
+```
+
+Output:
+```json
+[
+  {
+    "location.title": "Brownwood",
+    "title": "John Doe Band",
+    "start.date": "2025-11-14T22:00:00.000Z"
+  }
+]
+```
+
+**Example 2: Detailed event information**
+```bash
+python villages_events.py --fields title,location.title,start.date,description,url --format plain
+```
+
+Output:
+```
+title: John Doe Band, location.title: Brownwood, start.date: 2025-11-14T22:00:00.000Z, description: Join us for an evening of live music, url: https://...
+```
+
+**Example 3: Event with full address**
+```bash
+python villages_events.py --fields location.title,title,address.streetAddress,address.locality,address.region --format csv
+```
+
+Output:
+```
+location.title,title,address.streetAddress,address.locality,address.region
+Brownwood,John Doe Band,1101 Canal Street,The Villages,FL
+```
+
+**Example 4: Meshtastic format with custom fields**
+```bash
+python villages_events.py --fields title,start.date --format meshtastic
+```
+
+Output:
+```
+John Doe Band,2025-11-14T22:00:00.000Z#Jane Smith,2025-11-14T23:00:00.000Z#
+```
+
+**Note:** In Meshtastic format, only the first two fields are used to maintain the compact `field1,field2#` format.
+
+**Example 5: Event category and featured status**
+```bash
+python villages_events.py --fields location.title,title,category,featured --format json
+```
+
+Output:
+```json
+[
+  {
+    "location.title": "Spanish Springs",
+    "title": "The Band",
+    "category": "entertainment",
+    "featured": true
+  }
+]
+```
+
+#### Configuration File Support
+
+You can set default output fields in your `config.yaml` file to avoid specifying them on every command:
+
+```yaml
+output_fields:
+  - location.title
+  - title
+  - start.date
+  - category
+```
+
+Then simply run:
+```bash
+python villages_events.py --format json
+```
+
+Command-line `--fields` argument will override the configuration file setting.
+
+#### Use Cases
+
+**For Meshtastic messaging (compact format):**
+```bash
+# Default: venue and title
+python villages_events.py --format meshtastic
+
+# With start time
+python villages_events.py --fields location.title,start.date --format meshtastic
+```
+
+**For event calendars:**
+```bash
+python villages_events.py --fields title,location.title,start.date,end.date,description --format json
+```
+
+**For location-based apps:**
+```bash
+python villages_events.py --fields title,location.title,address.streetAddress,address.locality,url --format csv
+```
+
+**For event discovery:**
+```bash
+python villages_events.py --fields title,excerpt,category,location.title,image,url --format json
+```
+
+**For simple listings:**
+```bash
+python villages_events.py --fields location.title,title --format plain
+```
+
+#### Backward Compatibility
+
+When no `--fields` argument is provided and no `output_fields` is set in the configuration file, the application defaults to `location.title,title` to maintain backward compatibility with the original implementation.
+
 ### Redirecting Output
 
 Save output to a file:
@@ -182,22 +347,22 @@ This outputs the complete JSON response from the API, including all fields and m
 
 ### Combining Options
 
-You can combine date range, category, location, and format options:
+You can combine date range, category, location, format, and fields options:
 ```bash
 # Get next week's entertainment events in JSON format
 python villages_events.py --date-range next-week --format json
 
-# Get tomorrow's sports events at Brownwood in CSV format
-python villages_events.py --date-range tomorrow --category sports --location Brownwood+Paddock+Square --format csv
+# Get tomorrow's sports events at Brownwood in CSV format with custom fields
+python villages_events.py --date-range tomorrow --category sports --location Brownwood+Paddock+Square --format csv --fields location.title,title,start.date
 
 # Get all recreation events (any date, any location) in plain text format
 python villages_events.py --date-range all --category recreation --location all --format plain
 
-# Get today's arts and crafts events at Sawgrass Grove
-python villages_events.py --category arts-and-crafts --location Sawgrass+Grove
+# Get today's arts and crafts events at Sawgrass Grove with detailed information
+python villages_events.py --category arts-and-crafts --location Sawgrass+Grove --fields title,location.title,description,url --format json
 
-# Get this week's events from all categories at Spanish Springs
-python villages_events.py --date-range this-week --category all --location Spanish+Springs+Town+Square
+# Get this week's events from all categories at Spanish Springs with times
+python villages_events.py --date-range this-week --category all --location Spanish+Springs+Town+Square --fields location.title,title,start.date,end.date --format csv
 ```
 
 ### Integration with Shell Scripts
@@ -232,6 +397,13 @@ date_range: this-week
 category: sports
 location: Brownwood+Paddock+Square
 
+# Customize which fields to include in output
+output_fields:
+  - location.title
+  - title
+  - start.date
+  - category
+
 # Customize venue abbreviations
 venue_mappings:
   Brownwood: BW
@@ -256,6 +428,27 @@ python villages_events.py --format csv       # Overrides to CSV, still uses spor
 python villages_events.py --category all     # Uses JSON format, overrides to all categories
 ```
 
+### Output Fields Configuration
+
+Customize which fields from the API response are included in your output by setting `output_fields` in `config.yaml`:
+
+```yaml
+output_fields:
+  - location.title
+  - title
+  - start.date
+  - description
+  - url
+```
+
+**Available fields:** See the complete list in the [Configurable Output Fields](#configurable-output-fields) section above.
+
+**Field notation:** Use dot notation for nested fields (e.g., `location.title`, `start.date`, `address.locality`).
+
+**Default behavior:** If not specified, defaults to `["location.title", "title"]` for backward compatibility.
+
+**Override:** Command-line `--fields` argument takes precedence over config file settings.
+
 ### Venue Abbreviations
 
 Venue name abbreviations can be customized in the `config.yaml` file:
@@ -268,7 +461,7 @@ venue_mappings:
   Lake Sumter: LS
 ```
 
-The system uses substring matching - if a venue name contains any of the keywords, it will be replaced with the corresponding abbreviation.
+The system uses substring matching - if a venue name contains any of the keywords, it will be replaced with the corresponding abbreviation. Abbreviation is only applied to the `location.title` field.
 
 ## How It Works
 

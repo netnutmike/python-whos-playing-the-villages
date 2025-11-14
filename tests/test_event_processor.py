@@ -51,8 +51,8 @@ class TestEventProcessor(unittest.TestCase):
         result = self.processor.process_events(api_response)
         
         self.assertEqual(len(result), 2)
-        self.assertEqual(result[0], ("Brownwood", "Artist One"))
-        self.assertEqual(result[1], ("Spanish Springs", "Artist Two"))
+        self.assertEqual(result[0], {"location.title": "Brownwood", "title": "Artist One"})
+        self.assertEqual(result[1], {"location.title": "Spanish Springs", "title": "Artist Two"})
 
     def test_process_events_missing_events_key(self):
         """Test error when events key is missing."""
@@ -81,7 +81,7 @@ class TestEventProcessor(unittest.TestCase):
         self.assertEqual(result, [])
 
     def test_process_events_missing_location(self):
-        """Test skipping event with missing location field."""
+        """Test handling event with missing location field."""
         api_response = {
             "events": [
                 {"title": "Artist One"},
@@ -94,11 +94,13 @@ class TestEventProcessor(unittest.TestCase):
         
         result = self.processor.process_events(api_response)
         
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0], ("Brownwood", "Artist Two"))
+        # Both events should be processed, first one with empty location.title
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], {"location.title": "", "title": "Artist One"})
+        self.assertEqual(result[1], {"location.title": "Brownwood", "title": "Artist Two"})
 
     def test_process_events_missing_title(self):
-        """Test skipping event with missing title field."""
+        """Test handling event with missing title field."""
         api_response = {
             "events": [
                 {
@@ -113,8 +115,98 @@ class TestEventProcessor(unittest.TestCase):
         
         result = self.processor.process_events(api_response)
         
+        # Both events should be processed, second one with empty title
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], {"location.title": "Brownwood", "title": "Artist One"})
+        self.assertEqual(result[1], {"location.title": "Sawgrass", "title": ""})
+
+    def test_extract_field_simple(self):
+        """Test extracting a simple field."""
+        event = {"title": "Test Event"}
+        result = self.processor.extract_field(event, "title")
+        self.assertEqual(result, "Test Event")
+
+    def test_extract_field_nested(self):
+        """Test extracting a nested field using dot notation."""
+        event = {
+            "location": {"title": "Test Location"},
+            "start": {"date": "2025-11-14"}
+        }
+        result = self.processor.extract_field(event, "location.title")
+        self.assertEqual(result, "Test Location")
+        
+        result = self.processor.extract_field(event, "start.date")
+        self.assertEqual(result, "2025-11-14")
+
+    def test_extract_field_missing(self):
+        """Test extracting a missing field returns empty string."""
+        event = {"title": "Test Event"}
+        result = self.processor.extract_field(event, "description")
+        self.assertEqual(result, "")
+
+    def test_extract_field_missing_nested(self):
+        """Test extracting a missing nested field returns empty string."""
+        event = {"title": "Test Event"}
+        result = self.processor.extract_field(event, "location.title")
+        self.assertEqual(result, "")
+
+    def test_extract_field_none_value(self):
+        """Test extracting a field with None value returns empty string."""
+        event = {"description": None}
+        result = self.processor.extract_field(event, "description")
+        self.assertEqual(result, "")
+
+    def test_custom_output_fields(self):
+        """Test processing events with custom output fields."""
+        processor = EventProcessor(
+            self.venue_mappings,
+            output_fields=["title", "location.title", "category"]
+        )
+        
+        api_response = {
+            "events": [
+                {
+                    "location": {"title": "Brownwood Paddock Square"},
+                    "title": "Artist One",
+                    "category": "entertainment"
+                }
+            ]
+        }
+        
+        result = processor.process_events(api_response)
+        
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0], ("Brownwood", "Artist One"))
+        self.assertEqual(result[0], {
+            "title": "Artist One",
+            "location.title": "Brownwood",
+            "category": "entertainment"
+        })
+
+    def test_venue_abbreviation_only_on_location_title(self):
+        """Test that venue abbreviation is only applied to location.title field."""
+        processor = EventProcessor(
+            self.venue_mappings,
+            output_fields=["title", "location.title", "description"]
+        )
+        
+        api_response = {
+            "events": [
+                {
+                    "location": {"title": "Brownwood Paddock Square"},
+                    "title": "Brownwood Artist",
+                    "description": "Event at Brownwood"
+                }
+            ]
+        }
+        
+        result = processor.process_events(api_response)
+        
+        self.assertEqual(len(result), 1)
+        # Only location.title should be abbreviated
+        self.assertEqual(result[0]["location.title"], "Brownwood")
+        # title and description should not be abbreviated
+        self.assertEqual(result[0]["title"], "Brownwood Artist")
+        self.assertEqual(result[0]["description"], "Event at Brownwood")
 
 
 if __name__ == '__main__':

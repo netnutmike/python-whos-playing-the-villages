@@ -57,3 +57,34 @@ class ConfigLoader:
             Configuration value or fallback
         """
         return config.get(key, fallback)
+    
+    @staticmethod
+    def get_output_fields(config: Dict[str, Any], fallback: list) -> list:
+        """Get output_fields configuration with validation.
+        
+        Args:
+            config: Configuration dictionary
+            fallback: Fallback list of field names if not found in config
+            
+        Returns:
+            List of field names to include in output
+        """
+        output_fields = config.get('output_fields', fallback)
+        
+        # Ensure output_fields is a list
+        if not isinstance(output_fields, list):
+            print(
+                f"Warning: output_fields in config must be a list, using default: {fallback}",
+                file=__import__('sys').stderr
+            )
+            return fallback
+        
+        # Ensure all items are strings
+        if not all(isinstance(field, str) for field in output_fields):
+            print(
+                f"Warning: All output_fields must be strings, using default: {fallback}",
+                file=__import__('sys').stderr
+            )
+            return fallback
+        
+        return output_fields

@@ -189,19 +189,21 @@ def fetch_events(
 
 ### 5. Event Processor Module (`event_processor.py`)
 
-**Purpose**: Processes event data and applies venue abbreviations
+**Purpose**: Processes event data, extracts configurable fields, and applies venue abbreviations
 
 **Interface**:
 ```python
 class EventProcessor:
     """Processes event data and applies venue abbreviations."""
     
-    def __init__(self, venue_mappings: dict[str, str]):
+    def __init__(self, venue_mappings: dict[str, str], output_fields: list[str] = None):
         """
-        Initialize with venue abbreviation mappings.
+        Initialize with venue abbreviation mappings and output fields.
         
         Args:
             venue_mappings: Dictionary mapping keywords to abbreviations
+            output_fields: List of field paths to extract (e.g., ["title", "location.title", "start.date"])
+                          Defaults to ["location.title", "title"] for backward compatibility
         """
         pass
     
@@ -217,7 +219,20 @@ class EventProcessor:
         """
         pass
     
-    def process_events(self, api_response: dict) -> list[tuple[str, str]]:
+    def extract_field(self, event: dict, field_path: str) -> Any:
+        """
+        Extracts a field value from an event using dot notation.
+        
+        Args:
+            event: Event dictionary from API response
+            field_path: Dot-separated path to field (e.g., "location.title", "start.date")
+            
+        Returns:
+            Field value or empty string if not found
+        """
+        pass
+    
+    def process_events(self, api_response: dict) -> list[dict[str, Any]]:
         """
         Extracts and processes events from API response.
         
@@ -225,7 +240,7 @@ class EventProcessor:
             api_response: Parsed JSON response from API
             
         Returns:
-            List of tuples (abbreviated_venue, event_title)
+            List of dictionaries with extracted fields
         """
         pass
 ```
@@ -234,8 +249,10 @@ class EventProcessor:
 - Iterate through venue_mappings to find keyword matches
 - Use substring matching (keyword in venue)
 - Extract events array from response
-- Handle missing fields gracefully with logging
-- Return list of processed events
+- For each event, extract all specified fields using dot notation
+- Apply venue abbreviation to "location.title" field if present
+- Handle missing fields gracefully with logging, return empty string
+- Return list of processed events as dictionaries
 
 ### 6. Output Formatter Module (`output_formatter.py`)
 
@@ -247,48 +264,50 @@ class OutputFormatter:
     """Formats event data for output."""
     
     @staticmethod
-    def format_legacy(events: list[tuple[str, str]]) -> str:
+    def format_meshtastic(events: list[dict[str, Any]], field_names: list[str]) -> str:
         """
-        Formats events in legacy shell script format.
-        Format: venue1,title1#venue2,title2#
-        """
-        pass
-    
-    @staticmethod
-    def format_json(events: list[tuple[str, str]]) -> str:
-        """
-        Formats events as JSON array.
-        Format: [{"venue": "...", "title": "..."}, ...]
+        Formats events in meshtastic format using first two fields.
+        Format: field1_value,field2_value#field1_value,field2_value#
         """
         pass
     
     @staticmethod
-    def format_csv(events: list[tuple[str, str]]) -> str:
+    def format_json(events: list[dict[str, Any]]) -> str:
         """
-        Formats events as CSV with headers.
-        Format: venue,title\nVenue1,Title1\n...
+        Formats events as JSON array with all specified fields.
+        Format: [{"field1": "...", "field2": "..."}, ...]
         """
         pass
     
     @staticmethod
-    def format_plain(events: list[tuple[str, str]]) -> str:
+    def format_csv(events: list[dict[str, Any]], field_names: list[str]) -> str:
         """
-        Formats events as plain text, one per line.
-        Format: venue: title\n...
+        Formats events as CSV with headers for all fields.
+        Format: field1,field2\nValue1,Value2\n...
+        """
+        pass
+    
+    @staticmethod
+    def format_plain(events: list[dict[str, Any]], field_names: list[str]) -> str:
+        """
+        Formats events as plain text with all fields.
+        Format: field1: value1, field2: value2\n...
         """
         pass
     
     @staticmethod
     def format_events(
-        events: list[tuple[str, str]],
-        format_type: str = "legacy"
+        events: list[dict[str, Any]],
+        format_type: str = "meshtastic",
+        field_names: list[str] = None
     ) -> str:
         """
         Formats events according to specified format type.
         
         Args:
-            events: List of (venue, title) tuples
-            format_type: One of "legacy", "json", "csv", "plain"
+            events: List of event dictionaries with extracted fields
+            format_type: One of "meshtastic", "json", "csv", "plain"
+            field_names: List of field names for ordering (used for CSV headers and plain text)
             
         Returns:
             Formatted string ready for output
@@ -297,11 +316,12 @@ class OutputFormatter:
 ```
 
 **Implementation Details**:
-- Legacy format: Join with "#" delimiter, append final "#"
-- JSON format: Use json.dumps() with proper structure
-- CSV format: Use csv module or manual formatting with headers
-- Plain format: Simple string formatting with newlines
+- Meshtastic format: Use first two fields from field_names, join with "#" delimiter, append final "#"
+- JSON format: Use json.dumps() with all fields from event dictionaries
+- CSV format: Use csv module with field_names as headers, output all fields
+- Plain format: Format each event with all fields as "field1: value1, field2: value2"
 - Handle empty events list appropriately for each format
+- Handle missing field values (empty strings or nulls)
 
 ### 7. Configuration Module (`config.py`)
 
@@ -330,8 +350,19 @@ class Config:
     USER_AGENT: str = "Mozilla/5.0"
     
     # Output formats
-    VALID_FORMATS: list[str] = ["legacy", "json", "csv", "plain"]
-    DEFAULT_FORMAT: str = "legacy"
+    VALID_FORMATS: list[str] = ["meshtastic", "json", "csv", "plain"]
+    DEFAULT_FORMAT: str = "meshtastic"
+    
+    # Output fields
+    DEFAULT_OUTPUT_FIELDS: list[str] = ["location.title", "title"]
+    AVAILABLE_FIELDS: list[str] = [
+        "title", "description", "excerpt", "category", "subcategories",
+        "start.date", "end.date", "allDay", "cancelled", "featured",
+        "location.title", "location.category", "location.id",
+        "address.streetAddress", "address.locality", "address.region",
+        "address.postalCode", "address.country",
+        "image", "url", "otherInfo", "id"
+    ]
 ```
 
 ### 8. Custom Exceptions Module (`exceptions.py`)
@@ -365,9 +396,10 @@ class ProcessingError(VillagesEventError):
 
 ### Event Data Structure
 
-Events are represented as tuples during processing:
+Events are represented as dictionaries during processing:
 ```python
-Event = tuple[str, str]  # (abbreviated_venue, event_title)
+Event = dict[str, Any]  # Dictionary with configurable fields
+# Example: {"location.title": "Brownwood", "title": "Artist Name", "start.date": "2025-11-14T22:00:00.000Z"}
 ```
 
 ### API Response Structure
@@ -393,6 +425,11 @@ Venue mappings stored as dictionary:
 venue_mappings: dict[str, str] = {
     "keyword": "abbreviation"
 }
+```
+
+Output fields configuration:
+```python
+output_fields: list[str] = ["location.title", "title", "start.date"]
 ```
 
 ## Error Handling
