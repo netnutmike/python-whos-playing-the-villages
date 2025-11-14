@@ -42,8 +42,8 @@ class TestIntegrationEndToEnd(unittest.TestCase):
     @patch('src.session_manager.requests.Session.get')
     @patch('src.token_fetcher.requests.get')
     @patch('sys.argv', ['villages_events.py'])
-    def test_complete_pipeline_legacy_format(self, mock_token_get, mock_session_get, mock_api_get):
-        """Test complete pipeline with legacy format output."""
+    def test_complete_pipeline_meshtastic_format(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test complete pipeline with Meshtastic format output."""
         # Mock token fetch
         mock_token_response = Mock()
         mock_token_response.text = self.mock_js_content
@@ -237,7 +237,7 @@ class TestIntegrationEndToEnd(unittest.TestCase):
         # Verify exit code
         self.assertEqual(exit_code, 0)
         
-        # Verify empty output (single # for legacy format)
+        # Verify empty output (single # for Meshtastic format)
         self.assertEqual(output, "#")
 
 
@@ -436,6 +436,583 @@ class TestIntegrationErrorHandling(unittest.TestCase):
         
         # Verify exit code 2 for invalid arguments
         self.assertEqual(exit_code, 2)
+
+
+class TestIntegrationDateRange(unittest.TestCase):
+    """Integration tests for date range parameter."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_js_content = 'dp_AUTH_TOKEN = "Basic dGVzdHRva2VuMTIzNDU2";'
+        self.mock_api_response = {
+            "events": [
+                {
+                    "location": {"title": "Brownwood Paddock Square"},
+                    "title": "Test Event"
+                }
+            ]
+        }
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--date-range', 'this-week'])
+    def test_date_range_this_week(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test pipeline with 'this-week' date range."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify output contains event
+        self.assertIn("Brownwood,Test Event", output)
+        
+        # Verify API was called with correct date range
+        api_call_args = mock_api_get.call_args
+        self.assertIn("dateRange=this-week", api_call_args[0][0])
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--date-range', 'all'])
+    def test_date_range_all(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test pipeline with 'all' date range (no date filter)."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify API was called without dateRange parameter
+        api_call_args = mock_api_get.call_args
+        self.assertNotIn("dateRange", api_call_args[0][0])
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--date-range', 'tomorrow', '--format', 'json'])
+    def test_date_range_with_format(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test date range combined with format parameter."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify JSON output
+        parsed = json.loads(output)
+        self.assertEqual(len(parsed), 1)
+        self.assertEqual(parsed[0]["venue"], "Brownwood")
+        
+        # Verify API was called with correct date range
+        api_call_args = mock_api_get.call_args
+        self.assertIn("dateRange=tomorrow", api_call_args[0][0])
+
+    @patch('sys.argv', ['villages_events.py', '--date-range', 'invalid-range'])
+    def test_invalid_date_range_argument(self):
+        """Test error handling for invalid date range argument."""
+        exit_code = main()
+        
+        # Verify exit code 2 for invalid arguments
+        self.assertEqual(exit_code, 2)
+
+
+class TestIntegrationCategory(unittest.TestCase):
+    """Integration tests for category parameter."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_js_content = 'dp_AUTH_TOKEN = "Basic dGVzdHRva2VuMTIzNDU2";'
+        self.mock_api_response = {
+            "events": [
+                {
+                    "location": {"title": "Brownwood Paddock Square"},
+                    "title": "Test Event"
+                }
+            ]
+        }
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--category', 'sports'])
+    def test_category_sports(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test pipeline with 'sports' category."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify output contains event
+        self.assertIn("Brownwood,Test Event", output)
+        
+        # Verify API was called with correct category
+        api_call_args = mock_api_get.call_args
+        self.assertIn("categories=sports", api_call_args[0][0])
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--category', 'all'])
+    def test_category_all(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test pipeline with 'all' categories (no category filter)."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify API was called without categories parameter
+        api_call_args = mock_api_get.call_args
+        self.assertNotIn("categories=", api_call_args[0][0])
+        self.assertIn("locationCategories=town-squares", api_call_args[0][0])
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch(
+        'sys.argv',
+        ['villages_events.py', '--date-range', 'next-week', '--category', 'recreation', '--format', 'json']
+    )
+    def test_category_with_date_range_and_format(
+        self, mock_token_get, mock_session_get, mock_api_get
+    ):
+        """Test category combined with date range and format parameters."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify JSON output
+        parsed = json.loads(output)
+        self.assertEqual(len(parsed), 1)
+        self.assertEqual(parsed[0]["venue"], "Brownwood")
+        
+        # Verify API was called with correct parameters
+        api_call_args = mock_api_get.call_args
+        self.assertIn("dateRange=next-week", api_call_args[0][0])
+        self.assertIn("categories=recreation", api_call_args[0][0])
+
+    @patch('sys.argv', ['villages_events.py', '--category', 'invalid-category'])
+    def test_invalid_category_argument(self):
+        """Test error handling for invalid category argument."""
+        exit_code = main()
+        
+        # Verify exit code 2 for invalid arguments
+        self.assertEqual(exit_code, 2)
+
+
+class TestIntegrationLocation(unittest.TestCase):
+    """Integration tests for location parameter."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_js_content = 'dp_AUTH_TOKEN = "Basic dGVzdHRva2VuMTIzNDU2";'
+        self.mock_api_response = {
+            "events": [
+                {
+                    "location": {"title": "Brownwood Paddock Square"},
+                    "title": "Test Event"
+                }
+            ]
+        }
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--location', 'Brownwood+Paddock+Square'])
+    def test_location_brownwood(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test pipeline with 'Brownwood+Paddock+Square' location."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify output contains event
+        self.assertIn("Brownwood,Test Event", output)
+        
+        # Verify API was called with correct location
+        api_call_args = mock_api_get.call_args
+        self.assertIn("locationCategories=Brownwood+Paddock+Square", api_call_args[0][0])
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--location', 'all'])
+    def test_location_all(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test pipeline with 'all' locations (no location filter)."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify API was called without locationCategories parameter
+        api_call_args = mock_api_get.call_args
+        self.assertNotIn("locationCategories", api_call_args[0][0])
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch(
+        'sys.argv',
+        ['villages_events.py', '--date-range', 'next-week', '--category', 'sports', 
+         '--location', 'sports-recreation', '--format', 'json']
+    )
+    def test_location_with_all_filters(
+        self, mock_token_get, mock_session_get, mock_api_get
+    ):
+        """Test location combined with all other parameters."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify JSON output
+        parsed = json.loads(output)
+        self.assertEqual(len(parsed), 1)
+        self.assertEqual(parsed[0]["venue"], "Brownwood")
+        
+        # Verify API was called with correct parameters
+        api_call_args = mock_api_get.call_args
+        self.assertIn("dateRange=next-week", api_call_args[0][0])
+        self.assertIn("categories=sports", api_call_args[0][0])
+        self.assertIn("locationCategories=sports-recreation", api_call_args[0][0])
+
+    @patch('sys.argv', ['villages_events.py', '--location', 'invalid-location'])
+    def test_invalid_location_argument(self):
+        """Test error handling for invalid location argument."""
+        exit_code = main()
+        
+        # Verify exit code 2 for invalid arguments
+        self.assertEqual(exit_code, 2)
+
+
+class TestIntegrationRawOutput(unittest.TestCase):
+    """Integration tests for raw output option."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_js_content = 'dp_AUTH_TOKEN = "Basic dGVzdHRva2VuMTIzNDU2";'
+        self.mock_api_response = {
+            "events": [
+                {
+                    "location": {"title": "Brownwood Paddock Square"},
+                    "title": "Test Event",
+                    "extra_field": "extra_data"
+                }
+            ],
+            "metadata": {
+                "total": 1,
+                "page": 1
+            }
+        }
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--raw'])
+    def test_raw_output(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test raw output returns unprocessed API response."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify output is valid JSON
+        parsed = json.loads(output)
+        
+        # Verify raw output contains all fields
+        self.assertIn("events", parsed)
+        self.assertIn("metadata", parsed)
+        self.assertEqual(parsed["events"][0]["extra_field"], "extra_data")
+        self.assertEqual(parsed["metadata"]["total"], 1)
+
+    @patch('src.api_client.requests.Session.get')
+    @patch('src.session_manager.requests.Session.get')
+    @patch('src.token_fetcher.requests.get')
+    @patch('sys.argv', ['villages_events.py', '--raw', '--format', 'csv'])
+    def test_raw_output_ignores_format(self, mock_token_get, mock_session_get, mock_api_get):
+        """Test that raw output ignores format parameter."""
+        # Mock token fetch
+        mock_token_response = Mock()
+        mock_token_response.text = self.mock_js_content
+        mock_token_response.raise_for_status = Mock()
+        mock_token_get.return_value = mock_token_response
+        
+        # Mock session establishment
+        mock_session_response = Mock()
+        mock_session_response.raise_for_status = Mock()
+        mock_session_get.return_value = mock_session_response
+        
+        # Mock API request
+        mock_api_response = Mock()
+        mock_api_response.status_code = 200
+        mock_api_response.json.return_value = self.mock_api_response
+        mock_api_get.return_value = mock_api_response
+        
+        # Capture stdout
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            exit_code = main()
+            output = captured_output.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        # Verify exit code
+        self.assertEqual(exit_code, 0)
+        
+        # Verify output is JSON (not CSV), proving --format is ignored
+        parsed = json.loads(output)
+        self.assertIn("events", parsed)
 
 
 if __name__ == '__main__':

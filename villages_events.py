@@ -10,6 +10,7 @@ import argparse
 import logging
 
 from src.config import Config
+from src.config_loader import ConfigLoader
 from src.token_fetcher import fetch_auth_token
 from src.session_manager import SessionManager
 from src.api_client import fetch_events
@@ -30,6 +31,15 @@ def main() -> int:
         stream=sys.stderr
     )
     
+    # Load configuration from YAML file
+    yaml_config = ConfigLoader.load_config()
+    
+    # Get defaults from config file or fall back to hardcoded defaults
+    default_format = ConfigLoader.get_default(yaml_config, 'format', Config.DEFAULT_FORMAT)
+    default_date_range = ConfigLoader.get_default(yaml_config, 'date_range', Config.DEFAULT_DATE_RANGE)
+    default_category = ConfigLoader.get_default(yaml_config, 'category', Config.DEFAULT_CATEGORY)
+    default_location = ConfigLoader.get_default(yaml_config, 'location', Config.DEFAULT_LOCATION)
+    
     # Parse command-line arguments
     parser = argparse.ArgumentParser(
         description='Fetch and format entertainment events from The Villages API'
@@ -37,8 +47,36 @@ def main() -> int:
     parser.add_argument(
         '--format',
         choices=Config.VALID_FORMATS,
-        default=Config.DEFAULT_FORMAT,
-        help=f'Output format (default: {Config.DEFAULT_FORMAT})'
+        default=default_format,
+        help=f'Output format (default: {default_format})'
+    )
+    parser.add_argument(
+        '--date-range',
+        choices=Config.VALID_DATE_RANGES,
+        default=default_date_range,
+        help=f'Date range for events (default: {default_date_range})'
+    )
+    parser.add_argument(
+        '--category',
+        choices=Config.VALID_CATEGORIES,
+        default=default_category,
+        help=f'Event category (default: {default_category})'
+    )
+    parser.add_argument(
+        '--location',
+        choices=Config.VALID_LOCATIONS,
+        default=default_location,
+        help=f'Event location (default: {default_location})'
+    )
+    parser.add_argument(
+        '--config',
+        default='config.yaml',
+        help='Path to configuration file (default: config.yaml)'
+    )
+    parser.add_argument(
+        '--raw',
+        action='store_true',
+        help='Output raw API response without processing (for debugging)'
     )
     
     try:
@@ -49,27 +87,45 @@ def main() -> int:
         return 2 if e.code != 0 else 0
     
     try:
-        # Initialize Config and load venue mappings
-        venue_mappings = Config.DEFAULT_VENUE_MAPPINGS
+        # Load venue mappings from config file or use defaults
+        venue_mappings = ConfigLoader.get_default(
+            yaml_config, 'venue_mappings', Config.DEFAULT_VENUE_MAPPINGS
+        )
+        
+        # Get timeout from config file or use default
+        timeout = ConfigLoader.get_default(yaml_config, 'timeout', Config.DEFAULT_TIMEOUT)
+        
+        # Generate URLs with specified filters
+        calendar_url = Config.get_calendar_url(args.date_range, args.category, args.location)
+        api_url = Config.get_api_url(args.date_range, args.category, args.location)
         
         # Step 1: Fetch authentication token
         logging.debug("Fetching authentication token...")
-        auth_token = fetch_auth_token(Config.JS_URL, timeout=Config.DEFAULT_TIMEOUT)
+        auth_token = fetch_auth_token(Config.JS_URL, timeout=timeout)
         
         # Step 2: Establish session with context manager for cleanup
         with SessionManager() as session_manager:
             logging.debug("Establishing session...")
-            session_manager.establish_session(Config.CALENDAR_URL, timeout=Config.DEFAULT_TIMEOUT)
+            session_manager.establish_session(calendar_url, timeout=timeout)
             session = session_manager.get_session()
             
             # Step 3: Fetch events from API
-            logging.debug("Fetching events from API...")
+            logging.debug(
+                f"Fetching events from API (date range: {args.date_range}, "
+                f"category: {args.category}, location: {args.location})..."
+            )
             api_response = fetch_events(
                 session=session,
-                api_url=Config.API_URL,
+                api_url=api_url,
                 auth_token=auth_token,
-                timeout=Config.DEFAULT_TIMEOUT
+                timeout=timeout
             )
+            
+            # If raw output requested, print API response and exit
+            if args.raw:
+                import json
+                print(json.dumps(api_response, indent=2))
+                return 0
             
             # Step 4: Process events
             logging.debug("Processing events...")

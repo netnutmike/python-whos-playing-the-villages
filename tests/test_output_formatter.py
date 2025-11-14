@@ -16,15 +16,15 @@ class TestOutputFormatter(unittest.TestCase):
             ("Sawgrass", "Artist Three")
         ]
 
-    def test_format_legacy_with_events(self):
-        """Test legacy format with events."""
-        result = OutputFormatter.format_legacy(self.sample_events)
+    def test_format_meshtastic_with_events(self):
+        """Test Meshtastic format with events."""
+        result = OutputFormatter.format_meshtastic(self.sample_events)
         expected = "Brownwood,Artist One#Spanish Springs,Artist Two#Sawgrass,Artist Three#"
         self.assertEqual(result, expected)
 
-    def test_format_legacy_empty(self):
-        """Test legacy format with empty events list."""
-        result = OutputFormatter.format_legacy([])
+    def test_format_meshtastic_empty(self):
+        """Test Meshtastic format with empty events list."""
+        result = OutputFormatter.format_meshtastic([])
         self.assertEqual(result, "#")
 
     def test_format_json_with_events(self):
@@ -69,9 +69,9 @@ class TestOutputFormatter(unittest.TestCase):
         result = OutputFormatter.format_plain([])
         self.assertEqual(result, "")
 
-    def test_format_events_legacy(self):
-        """Test format_events dispatcher with legacy format."""
-        result = OutputFormatter.format_events(self.sample_events, "legacy")
+    def test_format_events_meshtastic(self):
+        """Test format_events dispatcher with Meshtastic format."""
+        result = OutputFormatter.format_events(self.sample_events, "meshtastic")
         self.assertIn("Brownwood,Artist One#", result)
 
     def test_format_events_json(self):

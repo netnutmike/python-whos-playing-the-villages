@@ -31,24 +31,81 @@ pip install -r requirements.txt
 
 The `requirements.txt` file includes:
 - `requests` - HTTP library for API requests and session management
+- `pyyaml` - YAML parser for configuration file support
+
+3. (Optional) Create a configuration file:
+```bash
+cp config.yaml.example config.yaml
+# Edit config.yaml to set your preferred defaults
+```
 
 ## Usage
 
 ### Basic Usage
 
-Run the script with default settings (legacy format output):
+Run the script with default settings (today's events in Meshtastic format):
 ```bash
 python villages_events.py
 ```
 
-### Output Format Options
+### Command-Line Options
+
+The application supports two main options:
+
+#### Date Range Option
+
+Specify which events to fetch using the `--date-range` option:
+
+```bash
+python villages_events.py --date-range today        # Today's events (default)
+python villages_events.py --date-range tomorrow     # Tomorrow's events
+python villages_events.py --date-range this-week    # This week's events
+python villages_events.py --date-range next-week    # Next week's events
+python villages_events.py --date-range this-month   # This month's events
+python villages_events.py --date-range next-month   # Next month's events
+python villages_events.py --date-range all          # All events (no date filter)
+```
+
+#### Category Option
+
+Filter events by category using the `--category` option:
+
+```bash
+python villages_events.py --category entertainment      # Entertainment events (default)
+python villages_events.py --category arts-and-crafts    # Arts and crafts events
+python villages_events.py --category health-and-wellness # Health and wellness events
+python villages_events.py --category recreation         # Recreation events
+python villages_events.py --category social-clubs       # Social club events
+python villages_events.py --category special-events     # Special events
+python villages_events.py --category sports             # Sports events
+python villages_events.py --category all                # All categories (no filter)
+```
+
+#### Location Option
+
+Filter events by location using the `--location` option:
+
+```bash
+python villages_events.py --location town-squares                           # Town squares (default)
+python villages_events.py --location Brownwood+Paddock+Square               # Brownwood Paddock Square
+python villages_events.py --location Spanish+Springs+Town+Square            # Spanish Springs Town Square
+python villages_events.py --location Lake+Sumter+Landing+Market+Square      # Lake Sumter Landing
+python villages_events.py --location Sawgrass+Grove                         # Sawgrass Grove
+python villages_events.py --location The+Sharon                             # The Sharon
+python villages_events.py --location sports-recreation                      # Sports & recreation venues
+python villages_events.py --location all                                    # All locations (no filter)
+```
+
+See `--help` for the complete list of 15 location options.
+
+#### Output Format Options
 
 The application supports multiple output formats via the `--format` option:
 
-#### Legacy Format (Default)
-Compatible with the original shell script format:
+#### Meshtastic Format (Default)
+Compact format optimized for Meshtastic messaging:
 ```bash
-python villages_events.py --format legacy
+python villages_events.py --format meshtastic
 ```
 
 Output example:
@@ -108,41 +165,110 @@ python villages_events.py --format json > events.json
 python villages_events.py --format csv > events.csv
 ```
 
+### Raw Output (Debugging)
+
+For debugging or exploring the API response structure, use the `--raw` flag to output the unprocessed API response:
+
+```bash
+python villages_events.py --raw
+```
+
+This outputs the complete JSON response from the API, including all fields and metadata. Useful for:
+- Exploring available data fields
+- Debugging API responses
+- Planning future features
+
+**Note:** When `--raw` is used, the `--format` option is ignored.
+
+### Combining Options
+
+You can combine date range, category, location, and format options:
+```bash
+# Get next week's entertainment events in JSON format
+python villages_events.py --date-range next-week --format json
+
+# Get tomorrow's sports events at Brownwood in CSV format
+python villages_events.py --date-range tomorrow --category sports --location Brownwood+Paddock+Square --format csv
+
+# Get all recreation events (any date, any location) in plain text format
+python villages_events.py --date-range all --category recreation --location all --format plain
+
+# Get today's arts and crafts events at Sawgrass Grove
+python villages_events.py --category arts-and-crafts --location Sawgrass+Grove
+
+# Get this week's events from all categories at Spanish Springs
+python villages_events.py --date-range this-week --category all --location Spanish+Springs+Town+Square
+```
+
 ### Integration with Shell Scripts
 
 Use in shell scripts or pipelines:
 ```bash
 #!/bin/bash
-events=$(python villages_events.py --format legacy)
+# Get today's events
+events=$(python villages_events.py --format meshtastic)
 echo "Today's events: $events"
+
+# Get this week's events in JSON
+python villages_events.py --date-range this-week --format json > this_week.json
 ```
 
 ## Configuration
 
+### Configuration File
+
+The application supports a YAML configuration file (`config.yaml`) to set default values for all parameters. This eliminates the need to specify command-line arguments for your common use cases.
+
+**Create a configuration file:**
+```bash
+cp config.yaml.example config.yaml
+```
+
+**Example configuration:**
+```yaml
+# Set your preferred defaults
+format: json
+date_range: this-week
+category: sports
+location: Brownwood+Paddock+Square
+
+# Customize venue abbreviations
+venue_mappings:
+  Brownwood: BW
+  Sawgrass: SG
+  Spanish Springs: SS
+  Lake Sumter: LS
+
+# Adjust HTTP timeout
+timeout: 15
+```
+
+**Using the configuration:**
+- If `config.yaml` exists, its values become the new defaults
+- Command-line arguments override config file settings
+- If no config file exists, hardcoded defaults are used
+
+**Example:**
+```bash
+# With config.yaml setting format: json and category: sports
+python villages_events.py                    # Uses JSON format and sports category
+python villages_events.py --format csv       # Overrides to CSV, still uses sports category
+python villages_events.py --category all     # Uses JSON format, overrides to all categories
+```
+
 ### Venue Abbreviations
 
-The application automatically abbreviates venue names based on keyword matching. Default mappings are defined in `src/config.py`:
+Venue name abbreviations can be customized in the `config.yaml` file:
 
-```python
-DEFAULT_VENUE_MAPPINGS = {
-    "Brownwood": "Brownwood",
-    "Sawgrass": "Sawgrass",
-    "Spanish Springs": "Spanish Springs",
-    "Lake Sumter": "Lake Sumter"
-}
+```yaml
+venue_mappings:
+  Brownwood: BW
+  Sawgrass: SG
+  Spanish Springs: SS
+  Lake Sumter: LS
 ```
 
-To customize venue abbreviations, modify the `DEFAULT_VENUE_MAPPINGS` dictionary in `src/config.py`. The system uses substring matching - if a venue name contains any of the keywords, it will be replaced with the corresponding abbreviation.
-
-Example customization:
-```python
-DEFAULT_VENUE_MAPPINGS = {
-    "Brownwood": "BW",
-    "Sawgrass": "SG",
-    "Spanish Springs": "SS",
-    "Lake Sumter": "LS"
-}
-```
+The system uses substring matching - if a venue name contains any of the keywords, it will be replaced with the corresponding abbreviation.
 
 ## How It Works
 
@@ -202,7 +328,7 @@ The application follows a pipeline architecture:
 
 ### No Events Found
 
-**Symptom**: Empty output or format-appropriate empty data (single "#" for legacy, "[]" for JSON)
+**Symptom**: Empty output or format-appropriate empty data (single "#" for Meshtastic, "[]" for JSON)
 
 **Possible Causes**:
 - No events scheduled for today at town squares

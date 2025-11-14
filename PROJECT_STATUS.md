@@ -4,7 +4,7 @@
 
 Villages Event Scraper is a **production-ready** Python application for fetching entertainment events from The Villages API.
 
-**Current Version:** 1.0.0  
+**Current Version:** 1.0.6  
 **Status:** ✅ Complete  
 **Last Updated:** 2025-11-14
 
@@ -16,7 +16,14 @@ Villages Event Scraper is a **production-ready** Python application for fetching
 - [x] Session management with cookie handling
 - [x] Authenticated API requests
 - [x] Event processing with venue abbreviation
-- [x] Multiple output formats (legacy, JSON, CSV, plain)
+- [x] Multiple output formats (Meshtastic, JSON, CSV, plain)
+- [x] Date range filtering (today, tomorrow, this-week, next-week, this-month, next-month, all)
+- [x] Category filtering (entertainment, arts-and-crafts, health-and-wellness, recreation, social-clubs, special-events, sports, all)
+- [x] Location filtering (15 options including town squares, specific venues, recreation facilities, all)
+- [x] YAML configuration file support for setting defaults
+- [x] Customizable venue mappings
+- [x] Configurable HTTP timeout
+- [x] Raw output mode for debugging and data exploration
 - [x] Command-line interface
 - [x] Comprehensive error handling
 - [x] Proper exit codes
@@ -72,12 +79,18 @@ Villages Event Scraper is a **production-ready** Python application for fetching
 - **API Client:** All passing ✅
 - **Event Processor:** 8/8 passing ✅
 - **Output Formatter:** 11/11 passing ✅
+- **Config:** 26/26 passing ✅
+- **Config Loader:** 9/9 passing ✅
 
 ### Integration Tests
 - **End-to-End:** 5/5 passing ✅
 - **Error Handling:** 8/8 passing ✅
+- **Date Range:** 4/4 passing ✅
+- **Category:** 4/4 passing ✅
+- **Location:** 4/4 passing ✅
+- **Raw Output:** 2/2 passing ✅
 
-**Total:** 13 integration tests, all passing ✅
+**Total:** 98 tests, all passing ✅
 
 ## Code Metrics
 
@@ -95,13 +108,13 @@ None currently identified.
 
 ### Planned Features
 - [ ] Caching support to reduce API calls
-- [ ] Date range filtering (not just "today")
-- [ ] Category filtering options
 - [ ] Retry logic with exponential backoff
 - [ ] Async/await for concurrent requests
-- [ ] Configuration file support (.env)
 - [ ] More output formats (XML, YAML)
 - [ ] Verbose/debug logging mode
+- [ ] Custom date range (specific dates)
+- [ ] Pagination support for large result sets
+- [ ] Environment variable support
 
 ### Performance Optimizations
 - [ ] Connection pooling
@@ -147,10 +160,43 @@ None currently identified.
 
 ## Release History
 
+### v1.0.6 (2025-11-14)
+- Added --raw flag for debugging
+- Output unprocessed API response
+- 2 new tests added (98 total)
+
+### v1.0.5 (2025-11-14)
+- Renamed "legacy" format to "meshtastic"
+- Updated all documentation
+
+### v1.0.4 (2025-11-14)
+- Added YAML configuration file support
+- Customizable defaults via config.yaml
+- 9 new tests added (96 total)
+- Documentation updated
+
+### v1.0.3 (2025-11-14)
+- Added location filtering
+- 15 location options supported
+- 12 new tests added (87 total)
+- Documentation updated
+
+### v1.0.2 (2025-11-14)
+- Added category filtering
+- 8 event categories supported
+- 12 new tests added (75 total)
+- Documentation updated
+
+### v1.0.1 (2025-11-14)
+- Added date range filtering
+- 7 date range options supported
+- 14 new tests added (63 total)
+- Documentation updated
+
 ### v1.0.0 (2025-11-14)
 - Initial release
 - Complete feature set
-- Full test coverage
+- Full test coverage (49 tests)
 - Comprehensive documentation
 
 ## Contributing

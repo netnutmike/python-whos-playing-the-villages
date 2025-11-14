@@ -1,0 +1,49 @@
+# Villages Event Scraper Configuration Example
+# 
+# Copy this file to config.yaml and customize the values to set your preferred defaults.
+# Command-line arguments will override these settings.
+
+# Default output format
+# Options: meshtastic, json, csv, plain
+format: meshtastic
+
+# Default date range
+# Options: today, tomorrow, this-week, next-week, this-month, next-month, all
+date_range: today
+
+# Default event category
+# Options: entertainment, arts-and-crafts, health-and-wellness, recreation, 
+#          social-clubs, special-events, sports, all
+category: entertainment
+
+# Default location
+# Options: town-squares, Lake+Sumter+Landing+Market+Square, 
+#          Spanish+Springs+Town+Square, Brownwood+Paddock+Square, Sawgrass+Grove,
+#          The+Show+Kitchen+at+Sawgrass+Grove, entertainment, The+Sharon,
+#          The+Studio+Theatre+at+Tierra+Del+Sol, sports-recreation, 
+#          Savannah+Recreation, sports, executive-golf, Polo+Club, all
+location: town-squares
+
+# Venue abbreviation mappings
+# Customize how venue names are abbreviated in the output
+venue_mappings:
+  Brownwood: Brownwood
+  Sawgrass: Sawgrass
+  Spanish Springs: Spanish Springs
+  Lake Sumter: Lake Sumter
+
+# HTTP timeout in seconds
+timeout: 10
+
+# Example: Custom configuration for sports events at Brownwood
+# Uncomment and modify to use:
+#
+# format: json
+# date_range: this-week
+# category: sports
+# location: Brownwood+Paddock+Square
+# venue_mappings:
+#   Brownwood: BW
+#   Sawgrass: SG
+#   Spanish Springs: SS
+#   Lake Sumter: LS

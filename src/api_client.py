@@ -33,12 +33,14 @@ def fetch_events(
     """
     try:
         # Prepare headers with authorization
+        # Extract date range from API URL to use in Referer
+        # For simplicity, use a generic calendar URL as referer
         headers = {
             'Authorization': auth_token,
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': Config.USER_AGENT,
             'Origin': 'https://www.thevillages.com',
-            'Referer': Config.CALENDAR_URL,
+            'Referer': 'https://www.thevillages.com/calendar/',
         }
         
         # Make authenticated GET request

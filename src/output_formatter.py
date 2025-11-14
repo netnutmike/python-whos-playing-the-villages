@@ -9,9 +9,9 @@ class OutputFormatter:
     """Formats event data for output in various formats."""
 
     @staticmethod
-    def format_legacy(events: list[tuple[str, str]]) -> str:
+    def format_meshtastic(events: list[tuple[str, str]]) -> str:
         """
-        Formats events in legacy shell script format.
+        Formats events in Meshtastic format.
         
         Format: venue1,title1#venue2,title2#
         
@@ -93,14 +93,14 @@ class OutputFormatter:
     @staticmethod
     def format_events(
         events: list[tuple[str, str]],
-        format_type: str = "legacy"
+        format_type: str = "meshtastic"
     ) -> str:
         """
         Formats events according to specified format type.
         
         Args:
             events: List of (venue, title) tuples
-            format_type: One of "legacy", "json", "csv", "plain"
+            format_type: One of "meshtastic", "json", "csv", "plain"
             
         Returns:
             Formatted string ready for output
@@ -109,7 +109,7 @@ class OutputFormatter:
             ValueError: If format_type is not recognized
         """
         formatters = {
-            "legacy": OutputFormatter.format_legacy,
+            "meshtastic": OutputFormatter.format_meshtastic,
             "json": OutputFormatter.format_json,
             "csv": OutputFormatter.format_csv,
             "plain": OutputFormatter.format_plain,

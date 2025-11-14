@@ -8,10 +8,53 @@ venue mappings, HTTP settings, and valid output formats.
 class Config:
     """Application configuration and constants."""
     
-    # URLs
+    # URLs (base URLs with placeholders)
     JS_URL = "https://cdn.thevillages.com/web_components/myvillages-auth-forms/main.js"
-    CALENDAR_URL = "https://www.thevillages.com/calendar/#/?dateRange=today&categories=entertainment&locationCategories=town-squares"
-    API_URL = "https://api.v2.thevillages.com/events/?cancelled=false&startRow=0&endRow=24&dateRange=today&categories=entertainment&locationCategories=town-squares&subcategoriesQueryType=and"
+    
+    # Date range options
+    VALID_DATE_RANGES = [
+        "today",
+        "tomorrow",
+        "this-week",
+        "next-week",
+        "this-month",
+        "next-month",
+        "all"  # No date range filter
+    ]
+    DEFAULT_DATE_RANGE = "today"
+    
+    # Category options
+    VALID_CATEGORIES = [
+        "entertainment",
+        "arts-and-crafts",
+        "health-and-wellness",
+        "recreation",
+        "social-clubs",
+        "special-events",
+        "sports",
+        "all"  # All event types (no category filter)
+    ]
+    DEFAULT_CATEGORY = "entertainment"
+    
+    # Location options
+    VALID_LOCATIONS = [
+        "town-squares",
+        "Lake+Sumter+Landing+Market+Square",
+        "Spanish+Springs+Town+Square",
+        "Brownwood+Paddock+Square",
+        "Sawgrass+Grove",
+        "The+Show+Kitchen+at+Sawgrass+Grove",
+        "entertainment",
+        "The+Sharon",
+        "The+Studio+Theatre+at+Tierra+Del+Sol",
+        "sports-recreation",
+        "Savannah+Recreation",
+        "sports",
+        "executive-golf",
+        "Polo+Club",
+        "all"  # All locations (no location filter)
+    ]
+    DEFAULT_LOCATION = "town-squares"
     
     # Default venue mappings
     DEFAULT_VENUE_MAPPINGS = {
@@ -26,5 +69,74 @@ class Config:
     USER_AGENT = "Mozilla/5.0"
     
     # Output formats
-    VALID_FORMATS = ["legacy", "json", "csv", "plain"]
-    DEFAULT_FORMAT = "legacy"
+    VALID_FORMATS = ["meshtastic", "json", "csv", "plain"]
+    DEFAULT_FORMAT = "meshtastic"
+    
+    @staticmethod
+    def get_calendar_url(
+        date_range: str = DEFAULT_DATE_RANGE,
+        category: str = DEFAULT_CATEGORY,
+        location: str = DEFAULT_LOCATION
+    ) -> str:
+        """Generate calendar URL with specified filters.
+        
+        Args:
+            date_range: Date range parameter (e.g., 'today', 'this-week')
+            category: Category parameter (e.g., 'entertainment', 'sports')
+            location: Location parameter (e.g., 'town-squares', 'Brownwood+Paddock+Square')
+            
+        Returns:
+            Complete calendar URL with filters
+        """
+        base = "https://www.thevillages.com/calendar/#/?"
+        params = []
+        
+        # Add date range parameter if not 'all'
+        if date_range != "all":
+            params.append(f"dateRange={date_range}")
+        
+        # Add category parameter if not 'all'
+        if category != "all":
+            params.append(f"categories={category}")
+        
+        # Add location parameter if not 'all'
+        if location != "all":
+            params.append(f"locationCategories={location}")
+        
+        return base + "&".join(params) if params else base.rstrip("?")
+    
+    @staticmethod
+    def get_api_url(
+        date_range: str = DEFAULT_DATE_RANGE,
+        category: str = DEFAULT_CATEGORY,
+        location: str = DEFAULT_LOCATION
+    ) -> str:
+        """Generate API URL with specified filters.
+        
+        Args:
+            date_range: Date range parameter (e.g., 'today', 'this-week')
+            category: Category parameter (e.g., 'entertainment', 'sports')
+            location: Location parameter (e.g., 'town-squares', 'Brownwood+Paddock+Square')
+            
+        Returns:
+            Complete API URL with filters
+        """
+        base = "https://api.v2.thevillages.com/events/?"
+        params = ["cancelled=false", "startRow=0", "endRow=24"]
+        
+        # Add date range parameter if not 'all'
+        if date_range != "all":
+            params.append(f"dateRange={date_range}")
+        
+        # Add category parameter if not 'all'
+        if category != "all":
+            params.append(f"categories={category}")
+        
+        # Add location parameter if not 'all'
+        if location != "all":
+            params.append(f"locationCategories={location}")
+        
+        # Always add subcategories query type
+        params.append("subcategoriesQueryType=and")
+        
+        return base + "&".join(params)

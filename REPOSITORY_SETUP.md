@@ -90,7 +90,7 @@ villages-event-scraper/
 - ✅ Session management with cookies
 - ✅ Authenticated API requests
 - ✅ Event processing with venue abbreviation
-- ✅ Multiple output formats (legacy, JSON, CSV, plain)
+- ✅ Multiple output formats (Meshtastic, JSON, CSV, plain)
 - ✅ Command-line interface
 - ✅ Comprehensive error handling
 - ✅ Proper exit codes

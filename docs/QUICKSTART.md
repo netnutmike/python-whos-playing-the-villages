@@ -25,7 +25,14 @@ Or download and extract the ZIP file.
 pip install -r requirements.txt
 ```
 
-That's it! Only one dependency: `requests`
+Dependencies: `requests` and `pyyaml`
+
+### 3. (Optional) Create Config File
+
+```bash
+cp config.yaml.example config.yaml
+# Edit config.yaml to set your preferred defaults
+```
 
 ## Basic Usage
 
@@ -35,7 +42,7 @@ That's it! Only one dependency: `requests`
 python3 villages_events.py
 ```
 
-Output (legacy format):
+Output (Meshtastic format):
 ```
 Brownwood,John Doe#Spanish Springs,Jane Smith#
 ```
@@ -57,6 +64,93 @@ python3 villages_events.py --format csv
 python3 villages_events.py --format plain
 ```
 
+### Try Different Date Ranges
+
+**Tomorrow's events:**
+```bash
+python3 villages_events.py --date-range tomorrow
+```
+
+**This week's events:**
+```bash
+python3 villages_events.py --date-range this-week
+```
+
+**All events:**
+```bash
+python3 villages_events.py --date-range all
+```
+
+### Try Different Categories
+
+**Sports events:**
+```bash
+python3 villages_events.py --category sports
+```
+
+**Arts and crafts events:**
+```bash
+python3 villages_events.py --category arts-and-crafts
+```
+
+**All categories:**
+```bash
+python3 villages_events.py --category all
+```
+
+### Try Different Locations
+
+**Brownwood Paddock Square:**
+```bash
+python3 villages_events.py --location Brownwood+Paddock+Square
+```
+
+**Spanish Springs Town Square:**
+```bash
+python3 villages_events.py --location Spanish+Springs+Town+Square
+```
+
+**All locations:**
+```bash
+python3 villages_events.py --location all
+```
+
+### Combine Options
+
+```bash
+# Next week's sports events at Brownwood in JSON
+python3 villages_events.py --date-range next-week --category sports --location Brownwood+Paddock+Square --format json
+
+# Tomorrow's recreation events at all locations
+python3 villages_events.py --date-range tomorrow --category recreation --location all
+```
+
+### Debug with Raw Output
+
+```bash
+# See the complete API response
+python3 villages_events.py --raw
+
+# Explore tomorrow's data structure
+python3 villages_events.py --raw --date-range tomorrow
+```
+
+## Configuration File
+
+Create a `config.yaml` file to set your preferred defaults:
+
+```yaml
+format: json
+date_range: this-week
+category: sports
+location: Brownwood+Paddock+Square
+```
+
+Now you can run without arguments:
+```bash
+python3 villages_events.py  # Uses your config.yaml defaults
+```
+
 ## Common Use Cases
 
 ### Save to File
@@ -69,7 +163,7 @@ python3 villages_events.py --format json > events.json
 
 ```bash
 #!/bin/bash
-events=$(python3 villages_events.py --format legacy)
+events=$(python3 villages_events.py --format meshtastic)
 echo "Today's events: $events"
 ```
 
