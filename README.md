@@ -172,18 +172,6 @@ The application follows a pipeline architecture:
    - Formats processed events according to selected format
    - Handles empty results appropriately for each format
 
-### Relationship to Original Shell Script
-
-This Python application replicates the functionality of `villages_square_events.sh` while providing:
-
-- **Better Error Handling**: Descriptive error messages and proper exit codes
-- **Maintainability**: Modular code structure with clear separation of concerns
-- **Extensibility**: Easy to add new output formats or features
-- **Documentation**: Comprehensive inline comments and external documentation
-- **Testing**: Unit and integration test support
-- **Multiple Output Formats**: Beyond the original legacy format
-
-The legacy output format is 100% compatible with the original shell script, ensuring backward compatibility for existing integrations.
 
 ## Project Structure
 
